@@ -22,10 +22,17 @@ export class StorageService {
   private readonly logger = new Logger(StorageService.name);
   private ipfs: IPFSHTTPClient;
 
-  constructor(private configService: ConfigService) {
-    const host = this.configService.get<string>('IPFS_HOST', 'localhost');
-    const port = parseInt(this.configService.get<string>('IPFS_PORT', '5001') ?? '5001', 10);
-    const protocol = this.configService.get<string>('IPFS_PROTOCOL', 'https') as 'http' | 'https';
+  constructor(private readonly config: ConfigService) {
+    const ipfsHost = this.config.get<string>('IPFS_HOST') || 'localhost';
+    const ipfsPort = this.config.get<number>('IPFS_PORT') || 5001;
+    const ipfsProtocol = this.config.get<string>('IPFS_PROTOCOL') || 'http';
+    
+    this.ipfs = create({
+      host: ipfsHost,
+      port: ipfsPort,
+      protocol: ipfsProtocol,
+    });
+  }
 
     try {
       this.ipfs = create({ host, port, protocol });
