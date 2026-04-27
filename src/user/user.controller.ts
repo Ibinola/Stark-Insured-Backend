@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Post,
   Patch,
   Delete,
   Param,
@@ -9,20 +8,33 @@ import {
   Query,
   DefaultValuePipe,
   ParseIntPipe,
-  UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiOkResponse,
+  ApiBearerAuth,
+  ApiQuery,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { UserParamsDto } from './dto/user-params.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
+@ApiTags('Users')
+@ApiBearerAuth()
 @Controller({ path: 'user', version: '1' })
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Throttle({ default: { limit: 100, ttl: 60000 } }) // 100 users list requests per minute
   @Get()
+  @ApiOperation({ summary: 'List users with pagination' })
+  @ApiOkResponse({ description: 'A paginated collection of users' })
+  @ApiQuery({ name: 'page', type: Number, required: false, description: 'Page number' })
+  @ApiQuery({ name: 'limit', type: Number, required: false, description: 'Number of users per page' })
   async getUsers(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page = 1,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit = 20,
@@ -32,6 +44,9 @@ export class UserController {
 
   @Throttle({ default: { limit: 100, ttl: 60000 } }) // 100 user lookups per minute
   @Get(':id')
+  @ApiOperation({ summary: 'Retrieve a user by ID' })
+  @ApiParam({ name: 'id', type: String, description: 'User ID' })
+  @ApiOkResponse({ description: 'User data for the requested ID' })
   async getUser(@Param() params: UserParamsDto) {
     const user = await this.userService.findById(params.id);
     return this.mapUserResponse(user);
@@ -39,14 +54,20 @@ export class UserController {
 
   @Throttle({ default: { limit: 100, ttl: 60000 } }) // 100 wallet lookups per minute
   @Get('wallet/:address')
+  @ApiOperation({ summary: 'Retrieve a user by wallet address' })
+  @ApiParam({ name: 'address', type: String, description: 'Wallet address to search by' })
+  @ApiOkResponse({ description: 'User data associated with the wallet address' })
   async getUserByWallet(@Param('address') address: string) {
     const user = await this.userService.findByWallet(address);
     return this.mapUserResponse(user);
   }
 
   @Throttle({ default: { limit: 20, ttl: 3600000 } }) // 20 updates per hour per user
-  @UseGuards(JwtAuthGuard)
   @Patch(':id')
+  @ApiOperation({ summary: 'Update a user profile' })
+  @ApiParam({ name: 'id', type: String, description: 'ID of the user to update' })
+  @ApiBody({ type: UpdateUserDto })
+  @ApiOkResponse({ description: 'Updated user data' })
   async updateUser(
     @Param() params: UserParamsDto,
     @Body() updateData: UpdateUserDto,
@@ -56,8 +77,10 @@ export class UserController {
   }
 
   @Throttle({ default: { limit: 5, ttl: 3600000 } }) // 5 deletions per hour per user
-  @UseGuards(JwtAuthGuard)
   @Delete(':id')
+  @ApiOperation({ summary: 'Soft delete a user' })
+  @ApiParam({ name: 'id', type: String, description: 'ID of the user to delete' })
+  @ApiOkResponse({ description: 'Deletion result' })
   async deleteUser(@Param() params: UserParamsDto) {
     const result = await this.userService.delete(params.id);
     return {

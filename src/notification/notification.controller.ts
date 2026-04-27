@@ -1,10 +1,20 @@
 import { Body, Controller, Get, Param, Post, Put, BadRequestException } from '@nestjs/common';
-import { Throttle, minutes } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiParam,
+  ApiBody,
+  ApiOkResponse,
+} from '@nestjs/swagger';
 import { PrismaService } from '../prisma.service';
 import { EncryptionService } from '../encryption/encryption.service';
 import { UpdateNotificationSettingsDto } from './dto/update-notification-settings.dto';
 import { PushSubscriptionDto } from './dto/push-subscription.dto';
 
+@ApiTags('Notifications')
+@ApiBearerAuth()
 @Controller({ path: 'notifications', version: '1' })
 export class NotificationController {
     constructor(
@@ -13,6 +23,9 @@ export class NotificationController {
     ) { }
 
     @Get('settings/:userId')
+    @ApiOperation({ summary: 'Fetch notification settings for a user' })
+    @ApiParam({ name: 'userId', type: String, description: 'ID of the user' })
+    @ApiOkResponse({ description: 'Notification settings for the user' })
     async getSettings(@Param('userId') userId: string) {
         return this.prisma.notificationSetting.upsert({
             where: { userId },
@@ -23,6 +36,10 @@ export class NotificationController {
 
     @Throttle({ default: { limit: 5, ttl: 60000 } })
     @Put('settings/:userId')
+    @ApiOperation({ summary: 'Update notification preferences for a user' })
+    @ApiParam({ name: 'userId', type: String, description: 'ID of the user' })
+    @ApiBody({ type: UpdateNotificationSettingsDto })
+    @ApiOkResponse({ description: 'Updated notification settings' })
     async updateSettings(
         @Param('userId') userId: string,
         @Body() settings: UpdateNotificationSettingsDto,
@@ -39,6 +56,10 @@ export class NotificationController {
 
     @Throttle({ default: { limit: 3, ttl: 60000 } })
     @Post('subscribe/:userId')
+    @ApiOperation({ summary: 'Subscribe a user to push notifications' })
+    @ApiParam({ name: 'userId', type: String, description: 'ID of the subscribing user' })
+    @ApiBody({ type: PushSubscriptionDto })
+    @ApiOkResponse({ description: 'Subscription created successfully' })
     async subscribeToPush(
         @Param('userId') userId: string,
         @Body() subscription: PushSubscriptionDto,
