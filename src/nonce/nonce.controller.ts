@@ -1,4 +1,5 @@
 import { Controller, Post, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiCreatedResponse } from '@nestjs/swagger';
 import { NonceService } from './nonce.service';
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -13,6 +14,7 @@ import { Public } from '../auth/decorators/public.decorator';
  * The nonce is stored in Redis with a 5-minute TTL and consumed (deleted) by
  * NonceService.consumeNonce() inside the relevant auth guard / strategy.
  */
+@ApiTags('Nonce')
 @Controller({ path: 'nonce', version: '1' })
 export class NonceController {
   constructor(private readonly nonceService: NonceService) {}
@@ -24,6 +26,16 @@ export class NonceController {
   @Public()
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Issue a one-time authentication nonce' })
+  @ApiCreatedResponse({
+    description: 'Returns a new nonce and expiration in milliseconds',
+    schema: {
+      example: {
+        nonce: 'abc123',
+        expiresInMs: 300000,
+      },
+    },
+  })
   async issueNonce(): Promise<{ nonce: string; expiresInMs: number }> {
     const nonce = await this.nonceService.generateNonce();
     return {
